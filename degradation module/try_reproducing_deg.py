@@ -34,7 +34,7 @@ def degradation():
     ceavg = 1.0*10**3   
     Cs_N= x1soc0*cs1max	
     Cs_N_disc= x1soc1*cs1max	
-    cycle=5	
+    cycle=2	
     N=[1,600,700]	
     for c in range(1, cycle):
 
@@ -75,12 +75,14 @@ def degradation():
 	    Rf=increase_resistance(Rf,j_para,t_p)
 	    Rc=Rc+Rf	
 	    Cs_N,diff_C=decrease_concentration(Cs_N,j_para,t_p)
+	    #print(diff_C,"degradation C",Rf, "resistance deg") 
+	    print(j_para)		
 	    Cs_N=float(Cs_N)
 	    Rf=float(Rf)
 	    Rc=float(Rc)
 	    x1soc0=float(Cs_N/cs1max)
 	    x1soc1=float((Cs_N_disc-diff_C)/cs1max)
-	    print(type(Rf), type(Cs_N), type(x1soc0),type(x1soc1))
+
 	
 
 

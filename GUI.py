@@ -41,7 +41,7 @@ class Adder(ttk.Frame):
         """Calculates the sum of the two inputted numbers."""
         path = str(self.path.get())
         capa = float(self.capa.get())
-        unit = float(self.capa.get())
+        unit = float(self.unit.get())
         start_passenger=float(self.start_passenger.get())
         eff_t=float(self.eff_t.get())
         eff_convert=float(self.eff_convert.get())
@@ -82,7 +82,7 @@ class Adder(ttk.Frame):
 
         self.root.config(menu=self.menubar)
         """ All num entries""" 
-        self.path = ttk.Entry(self, width=35,text='Brampton_23_East_Heavy Duty')
+        self.path = ttk.Entry(self, width=35)
         self.path.grid(column=1, row = 2)
         self.path.insert(0, "Brampton_23_East_Heavy Duty")
         
@@ -96,7 +96,7 @@ class Adder(ttk.Frame):
 
         self.start_passenger = ttk.Entry(self, width=35)
         self.start_passenger.grid(column=6, row=3,columnspan=4)
-        self.start_passenger.insert(0, "60")
+        self.start_passenger.insert(0, "61")
         
         self.eff_t = ttk.Entry(self, width=35)
         self.eff_t.grid(column= 1, row=4)
@@ -109,7 +109,7 @@ class Adder(ttk.Frame):
         
         self.reg_brak_eff = ttk.Entry(self, width=35)
         self.reg_brak_eff.grid(column= 1, row=5)
-        self.reg_brak_eff.insert(0, "0.5")
+        self.reg_brak_eff.insert(0, "0.4")
 
         self.gear_ratio = ttk.Entry(self, width=35)
         self.gear_ratio.grid(column=6, row=5,columnspan=4, sticky='ew')
@@ -118,7 +118,7 @@ class Adder(ttk.Frame):
 
         self.radius = ttk.Entry(self, width=35)
         self.radius.grid(column=1, row=6,columnspan=4, sticky='ew')
-        self.radius.insert(0, "0.57")
+        self.radius.insert(0, "0.571")
         
         self.M = ttk.Entry(self, width=35)
         self.M.grid(column=6, row=6,columnspan=4, sticky='ew')

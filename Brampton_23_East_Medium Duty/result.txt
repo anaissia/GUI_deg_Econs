@@ -1,0 +1,1 @@
+{"avg eff": 0.8644282903808189, "total distance": [107255.52526296297, 28.959200130000003], "Total energy used ": 42.859926656656995, "Energy per kwh/km": 1.480010720746968, "amount of charge (kwh)": 51.80031511470214, "Final SOC": 73.55207952675758, "time to complete route(min)": 76.26666666666667, "time to charge(min)": 6.2851049005838595, "average speed": 24.724648516127928}

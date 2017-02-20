@@ -152,8 +152,8 @@ def read_efficiency_BYD(RPM1, T):
     return eff
 
     
-T=[300,300]
-RPM=[290 for x in T]
-dic={}
-dic=read_efficiency_BYD(RPM,T) 
-print(dic)  
+#T=[300,300]
+#RPM=[290 for x in T]
+#dic={}
+#dic=read_efficiency_BYD(RPM,T) 
+#print(dic)  

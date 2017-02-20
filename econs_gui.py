@@ -51,6 +51,7 @@ def econs(path,capacity,unit,start_passenger,eff_t,eff_convert,reg_brak_eff,gear
     Then import all data necessary and store them in arrays
     """
     #date,time_diff=import_time_data(path)
+    print(path,capacity,unit,start_passenger,eff_t,eff_convert,reg_brak_eff,gear_ratio,radius,M,A, rho_air,Cdrag,aux_load, T_max, P_max)
     speed_long,speed_diff_long=import_speed_data(path,unit)
     time_data=pd.read_csv(path+'/time.csv') 
     grade_long=import_grade(path)
@@ -68,6 +69,7 @@ def econs(path,capacity,unit,start_passenger,eff_t,eff_convert,reg_brak_eff,gear
         speed_diff.append(speed_diff_long[x])
         time.append(time_long[x])
         grade.append(grade_long[x])
+ 
     time_diff=[]        
     for i in range(0,len(time)-1):
         time_diff.append(time[i+1]-time[i])
@@ -80,7 +82,7 @@ def econs(path,capacity,unit,start_passenger,eff_t,eff_convert,reg_brak_eff,gear
     mass=[M+start_passenger*75 for x in speed] 
     # calculate the road slope alpha can be zero if info not given
     
-    
+
     alpha=[np.deg2rad(x) for x in grade]  
     #alpha=[0 for x in speed] 
     
@@ -100,9 +102,22 @@ def econs(path,capacity,unit,start_passenger,eff_t,eff_convert,reg_brak_eff,gear
         Fg.append(mass[i]*g*math.sin(alpha[i]))
         
     """ Total force and acceleration to find motor torque """
-       
+    def regeneration(dec,M, Fb): #takes the deceleration and the mass, returns back force
+        c=2.33 #m
+        b=4.88 #m
+        g=9.81
+        W=g*M
+        h=1.65 #m
+        L=7.21 #m
+        # Fbr=(b/L)*W-(h/L)*(W/g)*abs(dec) # use Gillespie formula
+        #Fbr=((b/L)-(h/L)*(abs(Fb)/M*g))*abs(Fb) #use biasini formula
+        Fbr=(((dec)/(g*L))*(M*g*b+h*M*(dec)))
+        if Fbr>0:
+            Fbr=-Fbr
+        return Fbr
+    
     acceleration=[]
-    Fmotor_wheel=[]
+    Fmove=[]
     Ftot=[]
     T_wheel=[]
     T_motor=[]
@@ -110,14 +125,18 @@ def econs(path,capacity,unit,start_passenger,eff_t,eff_convert,reg_brak_eff,gear
     RPM=[]
     for i in range(0, len(speed)-1):
         acceleration.append((speed_diff[i])/(time_diff[i]))
-           
+    count=0
 
     # used calculation in "Simulation of an electric transportation system at The Ohio State University"
     for i in range(0, len(speed)-1):
         Ftot.append(Fa[i]+Fr[i]+Fg[i])
-        Fmotor_wheel.append((mass[i]+0.1*mass[i])*acceleration[i]+Ftot[i]) #0.1 mass to account for inertia of internal components 
-    
-        T_wheel.append(Fmotor_wheel[i]*radius)
+        Fmove.append((mass[i]+0.1*mass[i])*acceleration[i]+Ftot[i]) #0.1 mass to account for inertia of internal components 
+        
+        if acceleration[i]<0 or Fmove[i]<0  : #in case of regeneration if either torque is negatie of acceleration is negative
+            Fmove[i]=regeneration(acceleration[i],M,Fmove[i])*reg_brak_eff  
+          #Fmove[i]=Fmove[i]*reg_brak_eff
+
+        T_wheel.append(Fmove[i]*radius)
         T_motor.append(T_wheel[i]/(eff_t*gear_ratio)) 
         RPMw.append(speed[i]/radius)
         RPM.append(RPMw[i]*gear_ratio)
@@ -127,17 +146,19 @@ def econs(path,capacity,unit,start_passenger,eff_t,eff_convert,reg_brak_eff,gear
         the vehicle completes a feasible path, 
         eg the maximum allowable torque can never be reached
     """
+    
+    
     for i in range(0,len(T_motor)-1): 
         
     
         if T_motor[i]>T_max:
             T_motor[i]=T_max
             T_wheel[i]= (eff_t*gear_ratio)*T_motor[i]
-            Fmotor_wheel[i]=T_wheel[i]/radius
+            Fmove[i]=T_wheel[i]/radius
             
             coeff1=(0.5*rho_air*A*Cdrag+0.00012*mass[i]*g*math.cos(alpha[i]) )
             coeff2=(mass[i]+0.1*mass[i])
-            coeff3=(0.008*mass[i]*g*math.cos(alpha[i])+Fg[i]-(mass[i]+0.1*mass[i])*speed[i])-Fmotor_wheel[i]
+            coeff3=(0.008*mass[i]*g*math.cos(alpha[i])+Fg[i]-(mass[i]+0.1*mass[i])*speed[i])-Fmove[i]
             coeff=[coeff1,coeff2,coeff3]
             results=np.roots(coeff) #solves the quadratic equation
             # d=speed diff because time diff is = 1 second
@@ -161,10 +182,10 @@ def econs(path,capacity,unit,start_passenger,eff_t,eff_convert,reg_brak_eff,gear
         if T_motor[i]<-T_max: #in case of braking, same method than when moving forward
             T_motor[i]=-T_max
             T_wheel[i]= (eff_t*gear_ratio)*T_motor[i]
-            Fmotor_wheel[i]=T_wheel[i]/radius        
+            Fmove[i]=T_wheel[i]/radius        
             coeff1=(0.5*rho_air*A*Cdrag+0.00012*mass[i]*g*math.cos(alpha[i]) )
             coeff2=(mass[i]+0.1*mass[i])
-            coeff3=(0.008*mass[i]*g*math.cos(alpha[i])+Fg[i]-(mass[i]+0.1*mass[i])*speed[i])-Fmotor_wheel[i]
+            coeff3=(0.008*mass[i]*g*math.cos(alpha[i])+Fg[i]-(mass[i]+0.1*mass[i])*speed[i])-Fmove[i]
             coeff=[coeff1,coeff2,coeff3]
             results=np.roots(coeff)
             d=speed_diff[i]
@@ -189,7 +210,7 @@ def econs(path,capacity,unit,start_passenger,eff_t,eff_convert,reg_brak_eff,gear
         time[kk]=time[kk-1]+time_diff[i]
         kk=kk+1
         
-       
+
     def efficiency_map(RPM,TM):
         # returns the efficiency in % of the motor for a given torque and RPM. 
         RPM1=[RPM,RPM]
@@ -252,15 +273,17 @@ def econs(path,capacity,unit,start_passenger,eff_t,eff_convert,reg_brak_eff,gear
         else:
             eff.append(efficiency_map(RPM[x],abs(T_motor[x]))/100) #0.104719755 rpm to rad/s
         
-        if acceleration[x]>=0 and T_motor[x]>0: # if the vehicle is moving forward
+#        if acceleration[x]>=0 and T_motor[x]>0: # if the vehicle is moving forward
             
-         P_instantaneous_w.append(T_motor[x]*RPM[x])
-         
-         P_instantaneous.append((P_instantaneous_w[x]/(eff[x]*eff_convert))+aux_load)  # get the power consumed by the motor
-    
-        else: #if the vehicle brakes
-            P_instantaneous_w.append(T_motor[x]*RPM[x]*reg_brak_eff)    
-            P_instantaneous.append((P_instantaneous_w[x]/(eff[x]*eff_convert))+aux_load)# get the power consumed by the motor with regenerative braking
+        P_instantaneous_w.append(T_motor[x]*RPM[x])
+        if  P_instantaneous_w[x]>0:
+            P_instantaneous.append((P_instantaneous_w[x]/(eff[x]*eff_convert))+(aux_load/eff_convert))  # get the power consumed by the motor
+        else:
+             P_instantaneous.append((P_instantaneous_w[x]*(eff[x]*eff_convert))+(aux_load/eff_convert))
+            
+#        else: #if the vehicle brakes
+#            P_instantaneous_w.append(T_motor[x]*RPM[x]*reg_brak_eff)    
+#            P_instantaneous.append((P_instantaneous_w[x]/(eff[x]*eff_convert))+aux_load)# get the power consumed by the motor with regenerative braking
         if P_instantaneous[x]>P_max: #just to make sure one last time that you never go beyond max power 
             P_instantaneous[x]=P_max
         if P_instantaneous[x]<-P_max:
@@ -268,6 +291,12 @@ def econs(path,capacity,unit,start_passenger,eff_t,eff_convert,reg_brak_eff,gear
                     
     
     energy=trapz(P_instantaneous[1:len(P_instantaneous)-1],time[1:len(P_instantaneous)-1])/(1000*overal_distance*3600) #integral of power over time = energy  kwh/km
+
+    print(path)    
+    print(min(Fmove), max(Fmove))
+    print('Energy per kwh/km',energy)
+    print('Total energy used ',energy*overal_distance)             
+    energy_kwh= [time_diff[i]*(P_instantaneous[i])*0.000278*0.001 for i in range(1,len(P_instantaneous)-1)]
     plotting_function(time[0:len(P_instantaneous)],P_instantaneous,'Time (s)','P_instantaneous_w','P_instantaneous_w',0,max(time),0,0) 
     plotting_function(time[0:len(P_instantaneous)],RPM,'Time (s)','RPM','RPM',0,max(time),0,0) 
     plotting_function(time[0:len(P_instantaneous)],T_motor,'Time (s)','T_motor','T_motor',0,max(time),0,0) 
@@ -275,10 +304,11 @@ def econs(path,capacity,unit,start_passenger,eff_t,eff_convert,reg_brak_eff,gear
     plotting_function(time,Fa,'Time (s)','F drag (N)','fa',0,max(time),0,0)
     plotting_function(time,Fr,'Time (s)','F roll (N)','fr',0,max(time),0,0)
     plotting_function(time,Fg,'Time (s)','F gravity (N)','fg',0,max(time),0,0)
-        
-    print('Energy per kwh/km',energy)
-    print('Total energy used ',energy*overal_distance)             
-    energy_kwh= [time_diff[i]*(P_instantaneous[i])*0.000278*0.001 for i in range(1,len(P_instantaneous)-1)]
+    plotting_function(time[0:len(Fmove)],Fmove,'Time (s)','F Moving/braking (N)','Fmove',0,max(time),0,0)
+   
+    
+    
+    
     ## ENERGY STORAGE CALCULATIONS
     SOC_i=0.95
     
@@ -303,6 +333,7 @@ def econs(path,capacity,unit,start_passenger,eff_t,eff_convert,reg_brak_eff,gear
     for i in range(0,len(SOC)):
         
         voltage.append(read_V(SOC[i]))
+    plotting_function(time[0:len(SOC)], SOC,'Time (s)','SOC','soc',0,max(time),0,0)        
     plotting_function(time[0:len(voltage)], voltage,'Time (s)','Voltage (V)','volt',0,max(time),0,0)
     # NF has 168 cells in series ==> V* 168 gives you the total votlage of the cell
     # also Energy consumption and cost-benefit analysis of hybrid and electric city buses paper has it
